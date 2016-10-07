@@ -1,0 +1,97 @@
+# Fill in your name, student ID, and email address in this file.
+# If you are working in a team, fill out the information for both team 
+# members.
+
+# SUBMIT THE LAB ONLY ONCE (from only one partner). This file will be
+# automatically parsed in order to give both team members credit for the
+# lab.
+
+# You need to fill in the EXERCISE sections describing your solutions
+# for Tasks 1, 2, and 3, as well as write the corresponding code.
+# If you did one or more extra credit problems, indicate which one in the
+# appropriate section below (remove the # sign first). If you have any other
+# information you'd like us to know, please add it at the end of the file.
+
+# Partner 1
+Name: Gabriel Pawlowsky
+Student ID: 204486619
+Email: gabriel_pawlowsky@yahoo.de
+
+# Partner 2 (if you're working in a team)
+Name: 
+Student ID: 
+Email: 
+
+# EXERCISE 1: What method you used to make your peer download and upload
+#    files in parallel?  (~1-3 sentences)
+
+I used simple forks to create new processes to handle each task_download
+and each task_upload call. To make sure no race conditions occur between
+downloaded and requested files, and since the spec allowed us to do so,
+I first handle all the downloads, wait for all the processes to finish
+downloading and only then start the upload. To not overflow the server
+with unlimited requests and monopolize all the resources for later, I also
+defined a maximum amount of processes to be openend.
+
+# EXERCISE 2A: What conditions did you find and fix that would have
+#    triggered a buffer overrun bug?  (~1-3 sentences each)
+
+start_download:
+	The file name is copied onto the stack into a fixed size array. The
+	file name could, however, have any length and when copied onto the stack
+	create a buffer overflow. To prevent this, I simply used the strncpy
+	function to copy the filename instead of the strcpy function, and
+	provided the maximum size of the file name as the amount of chars to
+	copy. If the file name is longer now, simply only the first couple
+	allowed characters are used as the file name.To make sure max length
+	strings work properly, a '\0' is added in the end.
+task_download:
+	Here as well, the file name copying was replaced by the aforementioned
+	strategy to prevent buffer overflow attack possibilites.
+
+# EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
+#    each)
+
+Crash through non-existent file or directory:
+      Added checks for the existence of the requested file or directory so a
+      malicious peer cannot crash my peer by requesting a non-existent resource.
+Remove blocking peers:
+       Some peers are transfering their files at a speed so slowly that they
+       block the whole peer by making it wait to transfer the file that slowly
+       forever on purpose. I prevent such bad peers from blocking my peer by
+       defining and enforcing a minimum limit on the transfer speed (I have
+       set it to 50 bytes/s for now) and dropping (and simply trying the next
+       peer in the list) a peer transfering at a speed lower than that.
+       I am checking the speed with a sample size of 10.
+Popular tracker bug:
+	The popular tracker bug mentioned in the spec occurs when a popular
+	tracker is serving more peers than it can pack into its buffer
+	of predefined size. To fix this one could make the buffer size
+	dynamic but this would pose performance disadvantages and be hard 
+	to implement efficiently with little code changes and throughout
+	all the parallel uploading and downloadng processes concurrently.
+	Therefore I simply fixed the bug by increasing the size of the
+	buffer by a factor of 8, so that even a very busy tracker can use it
+	to serve all of its requests.
+Uploading from unauthorized directory:
+	  As the spec mentioned, to prevent a peer from requesting a file
+	  from my peer clien that is not in the folder I originally specified
+	  for the data storage of my peer, I simply added a check for identity
+	  between my specified and the requested folder and throw and error
+	  if the differ.
+Transfering never-ending file:
+	  Since a malicious peer could also block my peer by sending/requesting
+	  a never-ending consecutive stream of data as a file, I defined
+	  and enforced a limit for the maximum size a single file can have, so
+	  that such malicious requests are dropped and returned with an error
+	  right away.
+
+Another way a malicious peer could compromise my peer is by providing a fake
+file with a content different from the one actually requested from the tracker.
+To prevent this, one could implement md5 checksum checks to see if the
+downloaded file's md5 hash is equal to the expected one, but since such an
+attack is not possible with the bad peers provided, I decided that such an 
+implementation would go beyond the scope of this project's specification.
+
+
+# Add any other information you'd like us to know below this line.
